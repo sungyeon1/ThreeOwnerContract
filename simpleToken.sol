@@ -14,7 +14,34 @@ interface ERC20Interface {
     event Approval(address indexed owner, address indexed spender, uint256 oldAmount, uint256 amount);
 }
 
-contract SimpleToken is ERC20Interface {
+abstract contract OwnerHelper {
+  	address private _owner;
+
+  	event OwnershipTransferred(address indexed preOwner, address indexed nextOwner);
+
+  	modifier onlyOwner {
+		require(msg.sender == _owner, "OwnerHelper: caller is not owner");
+		_;
+  	}
+
+  	constructor() {
+		_owner = msg.sender;
+  	}
+
+  	function owner() public view virtual returns (address) {
+		return _owner;
+  	}
+
+  	function transferOwnership(address newOwner) onlyOwner public {
+		require(newOwner != _owner);
+		require(newOwner != address(0x0));
+		_owner = newOwner;
+		emit OwnershipTransferred(_owner, newOwner);
+  	}
+}
+
+contract SimpleToken is ERC20Interface, OwnerHelper {
+    using SafeMath for uint256;
     mapping (address => uint256) private _balances;
     mapping (address => mapping (address => uint256)) public _allowances;
 
@@ -82,8 +109,8 @@ contract SimpleToken is ERC20Interface {
         require(recipient != address(0), "ERC20: transfer to the zero address");
         uint256 senderBalance = _balances[sender];
         require(senderBalance >= amount, "ERC20: transfer amount exceeds balance");
-        _balances[sender] = senderBalance - amount;
-        _balances[recipient] += amount;
+        _balances[sender] = senderBalance.sub(amount);
+        _balances[recipient] = _balances[recipient].add(amount);
     }
     
     function _approve(address owner, address spender, uint256 currentAmount, uint256 amount) internal virtual {
