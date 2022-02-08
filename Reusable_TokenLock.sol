@@ -14,6 +14,30 @@ interface ERC20Interface {
     event Approval(address indexed owner, address indexed spender, uint256 oldAmount, uint256 amount);
 }
 
+library SafeMath {
+  	function mul(uint256 a, uint256 b) internal pure returns (uint256) {
+		uint256 c = a * b;
+		assert(a == 0 || c / a == b);
+		return c;
+  	}
+
+  	function div(uint256 a, uint256 b) internal pure returns (uint256) {
+	    uint256 c = a / b;
+		return c;
+  	}
+
+  	function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+		assert(b <= a);
+		return a - b;
+  	}
+
+  	function add(uint256 a, uint256 b) internal pure returns (uint256) {
+		uint256 c = a + b;
+		assert(c >= a);
+		return c;
+	}
+}
+
 abstract contract OwnerHelper {
   	address private _owner;
 
@@ -37,7 +61,7 @@ abstract contract OwnerHelper {
 		require(newOwner != address(0x0));
 		address preOwner = _owner;
 		_owner = newOwner;
-		emit OwnershipTransferred(_owner, newOwner);
+		emit OwnershipTransferred(preOwner, newOwner);
   	}
 }
 
@@ -52,14 +76,14 @@ contract SimpleToken is ERC20Interface, OwnerHelper {
     uint8 public _decimals;
     bool public _tokenLock;
     mapping (address => bool) public _personalTokenLock;
-    
+
     constructor(string memory getName, string memory getSymbol) {
         _name = getName;
         _symbol = getSymbol;
         _decimals = 18;
         _totalSupply = 100000000e18;
         _balances[msg.sender] = _totalSupply;
-	_tokenLock = true;
+        _tokenLock = true;
     }
     
     function name() public view returns (string memory) {
@@ -108,14 +132,13 @@ contract SimpleToken is ERC20Interface, OwnerHelper {
         return true;
     }
     
-      function _transfer(address sender, address recipient, uint256 amount) internal virtual {
+    function _transfer(address sender, address recipient, uint256 amount) internal virtual {
         require(sender != address(0), "ERC20: transfer from the zero address");
         require(recipient != address(0), "ERC20: transfer to the zero address");
-        require(isTokenLock(sender, recipient) == false, "TokenLock: invalid token transfer");
         uint256 senderBalance = _balances[sender];
         require(senderBalance >= amount, "ERC20: transfer amount exceeds balance");
-        _balances[sender] = senderBalance.sub(amount);
-        _balances[recipient] = _balances[recipient].add(amount);
+        _balances[sender] = senderBalance - amount;
+        _balances[recipient] += amount;
     }
     
     function _approve(address owner, address spender, uint256 currentAmount, uint256 amount) internal virtual {
@@ -125,8 +148,8 @@ contract SimpleToken is ERC20Interface, OwnerHelper {
         _allowances[owner][spender] = amount;
         emit Approval(owner, spender, currentAmount, amount);
     }
-    
-    function isTokenLock(address from, address to) public view returns (bool lock) {
+
+        function isTokenLock(address from, address to) public view returns (bool lock) {
         lock = false;
 
         if(_tokenLock == true)
@@ -143,20 +166,19 @@ contract SimpleToken is ERC20Interface, OwnerHelper {
         require(_tokenLock == true);
         _tokenLock = false;
     }
+    
+    function TokenLockUp() onlyOwner public{
+        require(_tokenLock == false);
+        _tokenLock = true;
+    }
 
     function removePersonalTokenLock(address _who) onlyOwner public {
         require(_personalTokenLock[_who] == true);
         _personalTokenLock[_who] = false;
     }
 
-    function TokenLockUp() onlyOwner public{
-        require(_tokenLock == false);
-        _tokenLock = true;
-    }
-    
     function PersonalTokenLockUp(address _who) onlyOwner public{
-        require(_personalTokenLock[_who] == true);
+        require(_personalTokenLock[_who] == false);
         _personalTokenLock[_who] = true;
     }
-}
 }
