@@ -59,7 +59,6 @@ contract SimpleToken is ERC20Interface, OwnerHelper {
         _decimals = 18;
         _totalSupply = 100000000e18;
         _balances[msg.sender] = _totalSupply;
-	_tokenLock = true;
     }
     
     function name() public view returns (string memory) {
